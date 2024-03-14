@@ -40,9 +40,12 @@ public class Server {
                     String userNick = "";
                     String message = "";
                     System.out.println("wait start");
-                    String request = in.readLine();
-                    if (request.strip().equals("/exit")) break;
-                    else if (request.equals(FIRST_CONNECT_KEY)) {
+                    String request = in.readLine().strip();
+
+                    if (request.equals("/exit")) {
+                        break;
+                    } else if (request.equals(FIRST_CONNECT_KEY)) {
+                        // новое подключение 1) userNick 2) лог с клиента 3) отправка лога клиенту с сервера
                         System.out.println("first_connect");
                         userNick = in.readLine();
                         StringBuilder builder = new StringBuilder();
@@ -54,6 +57,7 @@ public class Server {
                         System.out.println(userNick + " has joined to chat.");
                         out.println(userNick + " welcome to chat!");
                     } else {
+                        // получени сообщения с клиента
                         String fullMessage = in.readLine();
                         System.out.println(fullMessage);
                         userNick = fullMessage.split(DELIMITER, 1)[0].strip();
