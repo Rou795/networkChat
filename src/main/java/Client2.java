@@ -7,7 +7,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
-public class Client {
+public class Client2 {
     private static final String CONFIG_FILE = "static/settings.txt";
     private static final String LOG_FILE = "static/file_client.log";
     private static final String FIRST_CONNECT_KEY = "FiRsTCoNnEcT*******";
@@ -69,7 +69,7 @@ public class Client {
                             String rawMesText = reader.readLine();
                             LocalDateTime mesTime = LocalDateTime.now();
                             String mesText = rawMesText.replaceAll("\\*", "\n");
- //                           System.out.println(mesTime);
+                            //                           System.out.println(mesTime);
                             System.out.println(mesText.strip());
                             saveMessage(mesText, mesTime);
                         }
@@ -199,3 +199,4 @@ public class Client {
         System.out.println("From: " + sender + "\n" + body);
     }
 }
+
