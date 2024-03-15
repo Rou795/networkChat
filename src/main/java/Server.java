@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -14,80 +15,104 @@ public class Server {
     private static final String LOG_FILE = "static/file_server.log";
     private static final String FIRST_CONNECT_KEY = "FiRsTCoNnEcT*******";
     private static final String DELIMITER = "###";
+    private static int PORT;
+    private static volatile ArrayList<PrintWriter> outList = new ArrayList<>();
 
-    public static void main(String[] args) {
-        int port = 0;
+    public static void main(String[] args) throws InterruptedException {
         Path settingsPath = Path.of(CONFIG_FILE);
         Scanner scanner = new Scanner(System.in);
         if (Files.exists(settingsPath)) {
             try (BufferedReader reader = Files.newBufferedReader(settingsPath)) {
                 while (reader.ready()) {
-                    port = Integer.parseInt(reader.readLine().split(":")[1]);
+                    PORT = Integer.parseInt(reader.readLine().split(":")[1]);
                 }
             } catch (IOException e) {
                 e.getMessage();
             }
         } else {
             System.out.println("Config_file не найден, введите, пожалуйста, номер порта для запуска сервера:");
-            port = scanner.nextInt();
+            PORT = scanner.nextInt();
         }
-
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Сервер стартовал");
-            while (true) {
-                System.out.println("подключение");
-                try (Socket clientSocket = serverSocket.accept(); // ждем подключения
-                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                     BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-                    // новое подключение 1) userNick 2) лог с клиента 3) отправка лога клиенту с сервера
-                    Runnable newUserCheck = () -> {
 
-                    };
-                    System.out.println("New connection accepted");
-                    String userNick = in.readLine();
-                    String message = "";
-                    System.out.println("wait start");
+        Runnable socketConnect = () -> {
+                while (true) {
+                    System.out.println("подключение");
+                    try (Socket clientSocket = serverSocket.accept(); // ждем подключения
+                         PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                         BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+                        // новое подключение 1) userNick 2) лог с клиента 3) отправка лога клиенту с сервера
+                        outList.add(out);
+                        System.out.println("New connection accepted");
+                        String userNick = in.readLine();
+                        String message = "";
+                        System.out.println("wait start");
 
-                    System.out.println("first_connect");
-                    out.println("server_log_begin");
-                    out.println(extractLog());
-                    out.println("server_log_end");
-                    System.out.println(userNick + " has joined to chat.");
-                    out.println(userNick + " welcome to chat!");
+                        System.out.println("first_connect");
+                        out.println("server_log_begin");
+                        out.println(extractLog());
+                        out.println("server_log_end");
+                        System.out.println(userNick + " has joined to chat.");
+                        for (PrintWriter channel : outList) {
+                            channel.println(userNick + " welcome to chat!");
+                        }
 //System.out.println(userNick + " welcome to chat!");
 
-                    // получение сообщения с клиента
-                    Runnable checkReader = () -> {
-                        while (true) {
-                            try {
-                                if (in.ready()) {
-                                    String raw_mes = in.readLine();
-                                    synchronized (raw_mes) {
-                                        System.out.println(raw_mes);
-                                        String mes = mesMaker(cleaningMes(raw_mes));
-                                        out.println(mes.replaceAll("\n", "*"));
-                                        saveMessage(mes);
+                        // получение сообщения с клиента
+                        Runnable checkReader = () -> {
+                            while (true) {
+                                try {
+                                    if (in.ready()) {
+                                        String raw_mes = in.readLine();
+                                        synchronized (raw_mes) {
+//                                            System.out.println(raw_mes);
+                                            String mes = mesMaker(cleaningMes(raw_mes));
+                                            for (PrintWriter channel : outList) {
+                                                channel.println(mes.replaceAll("\n", "*"));
+                                            }
+                                            saveMessage(mes);
+                                        }
                                     }
-                                }
 //                                Thread.sleep(5000);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
                             }
-                        }
-                    };
+                        };
 
-                    Thread fromServerThread = new Thread(checkReader);
-                    fromServerThread.start();
-                    fromServerThread.join();
-                } catch (IOException | InterruptedException e) {
-                    throw new RuntimeException(e);
+                        Thread fromServerThread = new Thread(checkReader);
+                        fromServerThread.start();
+                        fromServerThread.join();
+                    } catch (IOException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+        };
+        ArrayList<Thread> threads = new ArrayList<>();
+        Runnable checkerConnect = () -> {
+            while (true) {
+//            System.out.println(threads.size());
+//            System.out.println(outList.size());
+                if (threads.size() == outList.size()) {
+                    for (int i = 0; i < (threads.size() / 2) + 1; i++) {
+                        Thread connection = new Thread(socketConnect);
+                        threads.add(connection);
+                        connection.start();
+                    }
+                    System.out.println("Update: " + threads.size() + " " + outList.size());
                 }
             }
+        };
+        Thread connectController = new Thread(checkerConnect);
+        connectController.start();
+        connectController.join();
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-
     public static void saveMessage(String message) {
         Path logPath = Path.of(LOG_FILE);
 
@@ -144,4 +169,5 @@ public class Server {
                 "\nText: " + body + "\n";
         return finalMes;
     }
+
 }
