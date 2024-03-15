@@ -42,9 +42,7 @@ public class Server {
                     System.out.println("wait start");
                     String request = in.readLine().strip();
 
-                    if (request.equals("/exit")) {
-                        break;
-                    } else if (request.equals(FIRST_CONNECT_KEY)) {
+                    if (request.equals(FIRST_CONNECT_KEY)) {
                         // новое подключение 1) userNick 2) лог с клиента 3) отправка лога клиенту с сервера
                         System.out.println("first_connect");
                         userNick = in.readLine();
@@ -52,19 +50,21 @@ public class Server {
                         while (in.ready()) {
                             builder.append(in.readLine());
                         }
-                        out.println("server_log");
+                        out.println("server_log_begin");
                         out.println(extractLog(builder.toString()));
+                        out.println("server_log_end");
                         System.out.println(userNick + " has joined to chat.");
                         out.println(userNick + " welcome to chat!");
+                        System.out.println(userNick + " welcome to chat!");
                     } else {
-                        // получени сообщения с клиента
-                        String fullMessage = in.readLine();
-                        System.out.println(fullMessage);
-                        userNick = fullMessage.split(DELIMITER, 1)[0].strip();
-                        message = fullMessage.split(DELIMITER, 1)[1].strip();
+                        // получение сообщения с клиента
+                        System.out.println(request);
+                        userNick = request.split(DELIMITER, 1)[0].strip();
+                        message = request.split(DELIMITER, 1)[1].strip();
                         LocalDateTime mesTime = LocalDateTime.now();
                         saveMessage(userNick, mesTime, message);
-                        out.println("From: " + userNick + "\n" + message);
+//                        out.println("message");
+                        out.println("Message time: " + mesTime + "\nFrom: " + userNick + "\n" + message);
                     }
                     System.out.println("wait end");
                 } catch (IOException e) {
@@ -87,8 +87,8 @@ public class Server {
             }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
-            writer.write("From: " + from +
-                    "\nMessage time: " + mesTime +
+            writer.write("Message time: " + mesTime +
+                    "\nFrom: " + from +
                     "\nText: " + message);
             writer.flush();
         } catch (IOException e) {
@@ -103,8 +103,10 @@ public class Server {
         try (BufferedReader reader = Files.newBufferedReader(logPath)) {
             while (reader.ready()) {
                 builder.append(reader.readLine());
+                builder.append("\n");
             }
             serverLog = builder.toString().replaceAll(clientLog, "");
+            System.out.println(serverLog);
         } catch (IOException e) {
             e.getMessage();
         }
