@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
@@ -86,10 +87,10 @@ public class Server {
                 e.getMessage();
             }
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
+        try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
             writer.write("Message time: " + mesTime +
                     "\nFrom: " + from +
-                    "\nText: " + message);
+                    "\nText: " + message + "\n");
             writer.flush();
         } catch (IOException e) {
             e.getMessage();

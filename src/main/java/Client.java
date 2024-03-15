@@ -1,7 +1,9 @@
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
@@ -53,7 +55,7 @@ public class Client {
                     }
                 }
                 String serverLog = builder.toString().strip();
-                System.out.println(serverLog);
+//                System.out.println(serverLog);
                 logEnrichment(serverLog);
             }
             response = reader.readLine();
@@ -151,9 +153,9 @@ public class Client {
                 e.getMessage();
             }
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
-            writer.write("Message time: " + mesTime + "\n" + mesText);
-            writer.flush();
+        try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
+            writer.write("Message time: " + mesTime + "\n" + mesText + "\n");
+//            writer.flush();
         } catch (IOException e) {
             e.getMessage();
         }
@@ -183,9 +185,9 @@ public class Client {
             }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
-            System.out.println("enrichment" + serverLog);
+//            System.out.println("enrichment" + serverLog);
             writer.write(serverLog);
-            writer.flush();
+//            writer.flush();
         } catch (IOException e) {
             e.getMessage();
         }
