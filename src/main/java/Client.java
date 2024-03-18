@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
@@ -10,37 +9,42 @@ import java.util.Scanner;
 public class Client {
     private static final String CONFIG_FILE = "static/settings.txt";
     private static final String LOG_FILE = "static/file_client.log";
-    private static final String FIRST_CONNECT_KEY = "FiRsTCoNnEcT*******";
     private static final String DELIMITER = "###";
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         int port = 0;
         Path settingsPath = Path.of(CONFIG_FILE);
         Scanner scanner = new Scanner(System.in);
+
+// поиск конфигурационного файла. Если его нет, то просьба ввести номер порта вручную
+
         if (Files.exists(settingsPath)) {
             try (BufferedReader reader = Files.newBufferedReader(settingsPath)) {
                 while (reader.ready()) {
                     port = Integer.parseInt(reader.readLine().split(":")[1]);
                 }
             } catch (IOException e) {
-                e.getMessage();
+                throw new RuntimeException(e);
             }
         } else {
             System.out.println("Config_file не найден, введите, пожалуйста, номер порта для подключения к серверу:");
             port = scanner.nextInt();
         }
+
+// подключение к серверу        
+
         try (Socket clientSocket = new Socket("localhost", port);
              PrintWriter writer = new PrintWriter(clientSocket.getOutputStream(), true);
              BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 
             StringBuilder builder = new StringBuilder();
-
             System.out.println("Отправляем запрос серверу netology.homework");
-//            writer.println(FIRST_CONNECT_KEY);
             System.out.println("Подключение к серверу стабильно. Укажите свой ник для общения.");
             String nickName = scanner.nextLine();
             writer.println(nickName);
-//            System.out.println(clientLog);
+
+// получение file_log от сервера и перезапись локального с помощью функции logEnrichment()
+
             String response = reader.readLine();
             if (response.equals("server_log_begin")) {
                 response = "";
@@ -54,26 +58,23 @@ public class Client {
                     }
                 }
                 String serverLog = builder.toString().strip();
-//                System.out.println(serverLog);
                 logEnrichment(serverLog);
             }
             response = reader.readLine();
             System.out.println(response);
 
+// задача по получению писем от сервера, печатанию их в консоль и сохранение в file_log с помощью saveMessage()
+// для потока fromServerThread
+
             Runnable checkReader = () -> {
                 while (true) {
-//                    System.out.println("1");
                     try {
                         if (reader.ready()) {
-//                            System.out.println("1");
                             String rawMesText = reader.readLine();
-                            LocalDateTime mesTime = LocalDateTime.now();
                             String mesText = rawMesText.replaceAll("\\*", "\n");
- //                           System.out.println(mesTime);
                             System.out.println(mesText.strip());
-                            saveMessage(mesText, mesTime);
+                            saveMessage(mesText);
                         }
-//                        Thread.sleep(5000);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -82,26 +83,24 @@ public class Client {
 
             Thread fromServerThread = new Thread(checkReader);
 
+// задача по получению сообщений и команд от клиента, отправки их на сервер и сохранение в file_log с помощью saveMessage()
+// для потока fromUserThread. Также обработка команды /exit.
+
             Runnable checkInput = () -> {
                 while (true) {
-//                    System.out.println("2");
                     if (scanner.hasNextLine()) {
                         String clientRequest = scanner.nextLine();
                         if (clientRequest.equals("/exit")) {
                             System.out.println("Направлен сигнал на окончание работы");
                             fromServerThread.interrupt();
-                            while (!fromServerThread.isInterrupted()) {
-                                try {
-                                    Thread.sleep(100);
-                                } catch (InterruptedException e) {
-                                    throw new RuntimeException(e);
+                            while (true) {
+                                if (fromServerThread.isInterrupted()) {
+                                    System.out.println("Работа окончена. До свидания.");
+                                    break;
                                 }
                             }
-                            System.out.println("Работа окончена. До свидания.");
-                            break;
                         } else {
                             String message = mesMaker(nickName, clientRequest);
-//                            System.out.println(message);
                             writer.println(message);
                             saveMessage(clientRequest, LocalDateTime.now());
                         }
@@ -114,12 +113,12 @@ public class Client {
             fromUserThread.join();
             fromServerThread.join();
 
-        } catch (IOException e) {
-            e.getMessage();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
+
+// функция создания сообщения
 
     public static void saveMessage(String mesText) {
         Path logPath = Path.of(LOG_FILE);
@@ -128,16 +127,17 @@ public class Client {
             try {
                 Files.createFile(logPath);
             } catch (IOException e) {
-                e.getMessage();
+                throw new RuntimeException(e);
             }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
             writer.write(mesText + "\n");
-//            writer.flush();
         } catch (IOException e) {
-            e.getMessage();
+            throw new RuntimeException(e);
         }
     }
+
+//функция сохранения сообщения в file_log
 
     public static void saveMessage(String mesText, LocalDateTime mesTime) {
         Path logPath = Path.of(LOG_FILE);
@@ -146,29 +146,17 @@ public class Client {
             try {
                 Files.createFile(logPath);
             } catch (IOException e) {
-                e.getMessage();
+                throw new RuntimeException(e);
             }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
             writer.write("Message time: " + mesTime + "\n" + mesText + "\n");
-//            writer.flush();
         } catch (IOException e) {
-            e.getMessage();
+            throw new RuntimeException(e);
         }
     }
 
-    public static String extractLog() {
-        Path logPath = Path.of(LOG_FILE);
-        StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = Files.newBufferedReader(logPath)) {
-            while (reader.ready()) {
-                builder.append(reader.readLine());
-            }
-        } catch (IOException e) {
-            e.getMessage();
-        }
-        return builder.toString();
-    }
+// функция обновления лога по данным от сервера
 
     public static void logEnrichment(String serverLog) {
         Path logPath = Path.of(LOG_FILE);
@@ -177,25 +165,21 @@ public class Client {
             try {
                 Files.createFile(logPath);
             } catch (IOException e) {
-                e.getMessage();
+                throw new RuntimeException(e);
             }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
-//            System.out.println("enrichment" + serverLog);
             writer.write(serverLog);
-//            writer.flush();
         } catch (IOException e) {
-            e.getMessage();
+            throw new RuntimeException(e);
         }
     }
+
+// функция создания соообщения
 
     public static String mesMaker(String nickName, String body) {
         String message = nickName + "\n" + DELIMITER + "\n" + body;
         message = message.replaceAll("\n", "*");
         return message;
-    }
-
-    public static void printMes(String sender, String body) {
-        System.out.println("From: " + sender + "\n" + body);
     }
 }
