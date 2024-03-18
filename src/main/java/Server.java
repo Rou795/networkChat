@@ -139,7 +139,6 @@ public class Server {
     public static String extractLog() {
         Path logPath = Path.of(LOG_FILE);
         StringBuilder builderLog = new StringBuilder();
-        String serverLog = "";
         try (BufferedReader reader = Files.newBufferedReader(logPath)) {
             synchronized (reader) {
                 while (reader.ready()) {
@@ -147,11 +146,10 @@ public class Server {
                     builderLog.append("\n");
                 }
             }
-            System.out.println(serverLog);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return serverLog;
+        return builderLog.toString();
     }
 
 // функция для "очистки грязного" сообщения, полученного от клиента
