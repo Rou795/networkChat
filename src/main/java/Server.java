@@ -37,7 +37,7 @@ public class Server {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Сервер стартовал");
 
-// задача по ожитднаию подключения к серверу, отправку клиенту лога с сервера, сохранению подключения с ним
+// задача по ожиднаию подключения к серверу, отправку клиенту лога с сервера, сохранению подключения с ним
 // и добавление его потока вывода к числу остальных (outlist). Для потоков connection в листе threads
 
             Runnable socketConnect = () -> {
@@ -99,7 +99,6 @@ public class Server {
                             threads.add(connection);
                             connection.start();
                         }
-                        System.out.println("Update: " + threads.size() + " " + outList.size());
                     }
                     for (PrintWriter channel : outList) {
                         if (channel.checkError()) outList.remove(channel);

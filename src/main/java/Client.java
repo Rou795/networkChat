@@ -10,6 +10,7 @@ public class Client {
     private static final String CONFIG_FILE = "static/settings.txt";
     private static final String LOG_FILE = "static/file_client.log";
     private static final String DELIMITER = "###";
+    private static boolean fromServerChecker = true;
 
     public static void main(String[] args) {
         int port = 0;
@@ -62,12 +63,12 @@ public class Client {
             }
             response = reader.readLine();
             System.out.println(response);
-
+            System.out.println(1);
 // задача по получению писем от сервера, печатанию их в консоль и сохранение в file_log с помощью saveMessage()
 // для потока fromServerThread
 
             Runnable checkReader = () -> {
-                while (true) {
+                while (fromServerChecker) {
                     try {
                         if (reader.ready()) {
                             String rawMesText = reader.readLine();
@@ -87,18 +88,15 @@ public class Client {
 // для потока fromUserThread. Также обработка команды /exit.
 
             Runnable checkInput = () -> {
+                boolean checker = true;
                 while (true) {
                     if (scanner.hasNextLine()) {
                         String clientRequest = scanner.nextLine();
                         if (clientRequest.equals("/exit")) {
                             System.out.println("Направлен сигнал на окончание работы");
-                            fromServerThread.interrupt();
-                            while (true) {
-                                if (fromServerThread.isInterrupted()) {
-                                    System.out.println("Работа окончена. До свидания.");
-                                    break;
-                                }
-                            }
+                            fromServerChecker = false;
+                            System.out.println("Работа окончена. До свидания.");
+                            break;
                         } else {
                             String message = mesMaker(nickName, clientRequest);
                             writer.println(message);
@@ -106,80 +104,83 @@ public class Client {
                         }
                     }
                 }
-            };
-            Thread fromUserThread = new Thread(checkInput);
-            fromServerThread.start();
-            fromUserThread.start();
-            fromUserThread.join();
-            fromServerThread.join();
+                System.out.println(3);
+        } ;
+        Thread fromUserThread = new Thread(checkInput);
+        fromServerThread.start();
+        fromUserThread.start();
+        fromUserThread.join();
 
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+    } catch(IOException |
+    InterruptedException e)
+
+    {
+        throw new RuntimeException(e);
     }
+}
 
 // функция создания сообщения
 
-    public static void saveMessage(String mesText) {
-        Path logPath = Path.of(LOG_FILE);
+public static void saveMessage(String mesText) {
+    Path logPath = Path.of(LOG_FILE);
 
-        if (!Files.exists(logPath)) {
-            try {
-                Files.createFile(logPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
-            writer.write(mesText + "\n");
+    if (!Files.exists(logPath)) {
+        try {
+            Files.createFile(logPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+    try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
+        writer.write(mesText + "\n");
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+}
 
 //функция сохранения сообщения в file_log
 
-    public static void saveMessage(String mesText, LocalDateTime mesTime) {
-        Path logPath = Path.of(LOG_FILE);
+public static void saveMessage(String mesText, LocalDateTime mesTime) {
+    Path logPath = Path.of(LOG_FILE);
 
-        if (!Files.exists(logPath)) {
-            try {
-                Files.createFile(logPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
-            writer.write("Message time: " + mesTime + "\n" + mesText + "\n");
+    if (!Files.exists(logPath)) {
+        try {
+            Files.createFile(logPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+    try (BufferedWriter writer = Files.newBufferedWriter(logPath, StandardOpenOption.APPEND)) {
+        writer.write("Message time: " + mesTime + "\n" + mesText + "\n");
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+}
 
 // функция обновления лога по данным от сервера
 
-    public static void logEnrichment(String serverLog) {
-        Path logPath = Path.of(LOG_FILE);
+public static void logEnrichment(String serverLog) {
+    Path logPath = Path.of(LOG_FILE);
 
-        if (!Files.exists(logPath)) {
-            try {
-                Files.createFile(logPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
-            writer.write(serverLog);
+    if (!Files.exists(logPath)) {
+        try {
+            Files.createFile(logPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+    try (BufferedWriter writer = Files.newBufferedWriter(logPath)) {
+        writer.write(serverLog);
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+}
 
 // функция создания соообщения
 
-    public static String mesMaker(String nickName, String body) {
-        String message = nickName + "\n" + DELIMITER + "\n" + body;
-        message = message.replaceAll("\n", "*");
-        return message;
-    }
+public static String mesMaker(String nickName, String body) {
+    String message = nickName + "\n" + DELIMITER + "\n" + body;
+    message = message.replaceAll("\n", "*");
+    return message;
+}
 }
