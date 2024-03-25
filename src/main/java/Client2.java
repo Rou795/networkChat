@@ -1,18 +1,16 @@
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
-// Абсолютно идентичен Client1. Нужен лмшь для теста работы сервера с несколькими клиентами
-
 public class Client2 {
     private static final String CONFIG_FILE = "static/settings.txt";
     private static final String LOG_FILE = "static/file_client.log";
     private static final String DELIMITER = "###";
+    private static boolean fromServerChecker = true;
 
     public static void main(String[] args) {
         int port = 0;
@@ -65,12 +63,12 @@ public class Client2 {
             }
             response = reader.readLine();
             System.out.println(response);
-
+            System.out.println(1);
 // задача по получению писем от сервера, печатанию их в консоль и сохранение в file_log с помощью saveMessage()
 // для потока fromServerThread
 
             Runnable checkReader = () -> {
-                while (true) {
+                while (fromServerChecker) {
                     try {
                         if (reader.ready()) {
                             String rawMesText = reader.readLine();
@@ -90,18 +88,15 @@ public class Client2 {
 // для потока fromUserThread. Также обработка команды /exit.
 
             Runnable checkInput = () -> {
+                boolean checker = true;
                 while (true) {
                     if (scanner.hasNextLine()) {
                         String clientRequest = scanner.nextLine();
                         if (clientRequest.equals("/exit")) {
                             System.out.println("Направлен сигнал на окончание работы");
-                            fromServerThread.interrupt();
-                            while (true) {
-                                if (fromServerThread.isInterrupted()) {
-                                    System.out.println("Работа окончена. До свидания.");
-                                    break;
-                                }
-                            }
+                            fromServerChecker = false;
+                            System.out.println("Работа окончена. До свидания.");
+                            break;
                         } else {
                             String message = mesMaker(nickName, clientRequest);
                             writer.println(message);
@@ -109,14 +104,17 @@ public class Client2 {
                         }
                     }
                 }
-            };
+                System.out.println(3);
+            } ;
             Thread fromUserThread = new Thread(checkInput);
             fromServerThread.start();
             fromUserThread.start();
             fromUserThread.join();
-            fromServerThread.join();
 
-        } catch (IOException | InterruptedException e) {
+        } catch(IOException |
+                InterruptedException e)
+
+        {
             throw new RuntimeException(e);
         }
     }
